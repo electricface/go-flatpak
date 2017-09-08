@@ -156,6 +156,8 @@ func List(opts *ListOptions) (results []*ListResult, err error) {
 	args = append(args, optArgs...)
 
 	cmd := exec.Command(flatpakBin, args...)
+	var stderrBuf bytes.Buffer
+	cmd.Stderr = &stderrBuf
 	stdoutPipe, err := cmd.StdoutPipe()
 	if err != nil {
 		return nil, err
@@ -184,8 +186,7 @@ func List(opts *ListOptions) (results []*ListResult, err error) {
 	}
 	err = cmd.Wait()
 	if err != nil {
-		// TODO handle stderr
-		return nil, err
+		return nil, wrapErrorCmdRun(err, &stderrBuf)
 	}
 
 	return results, nil
