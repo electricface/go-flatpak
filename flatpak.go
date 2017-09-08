@@ -12,6 +12,51 @@ import (
 	"strings"
 )
 
+type FlatpakError struct {
+	desc       string
+	origin     *exec.ExitError
+	usageShown bool
+}
+
+func (err *FlatpakError) Error() string {
+	if err.desc != "" {
+		if err.usageShown {
+			return "flatpak argument error:" + err.desc
+		}
+		return "flatpak:" + err.desc
+	}
+	return err.origin.Error()
+}
+
+func wrapError(err error) error {
+	exitErr, ok := err.(*exec.ExitError)
+	if !ok {
+		return err
+	}
+
+	var lastLine []byte
+	var usageShown bool
+	lines := bytes.Split(exitErr.Stderr, []byte{'\n'})
+	if len(lines) > 0 && bytes.HasPrefix(lines[0], []byte("Usage:")) {
+		// first line is Usage:
+		usageShown = true
+	}
+
+	for _, line := range lines {
+		if len(line) > 0 {
+			lastLine = line
+		}
+	}
+
+	lastLine = bytes.TrimPrefix(lastLine, []byte("error:"))
+
+	return &FlatpakError{
+		desc:       string(lastLine),
+		origin:     exitErr,
+		usageShown: usageShown,
+	}
+}
+
 var regSpaces = regexp.MustCompile(`\s+`)
 
 const flatpakBin = "flatpak"
@@ -20,7 +65,7 @@ func SupportedArches() ([]string, error) {
 	cmd := exec.Command(flatpakBin, "--supported-arches")
 	out, err := cmd.Output()
 	if err != nil {
-		return nil, err
+		return nil, wrapError(err)
 	}
 	parts := bytes.Split(out, []byte{'\n'})
 	arches := make([]string, 0, len(parts))
@@ -36,7 +81,7 @@ func Version() (string, error) {
 	cmd := exec.Command(flatpakBin, "--version")
 	out, err := cmd.Output()
 	if err != nil {
-		return "", err
+		return "", wrapError(err)
 	}
 	out = bytes.TrimSpace(out)
 	out = bytes.TrimPrefix(out, []byte("Flatpak "))
@@ -47,7 +92,7 @@ func GlDrivers() ([]string, error) {
 	cmd := exec.Command(flatpakBin, "--gl-drivers")
 	out, err := cmd.Output()
 	if err != nil {
-		return nil, err
+		return nil, wrapError(err)
 	}
 	parts := bytes.Split(out, []byte{'\n'})
 	drivers := make([]string, 0, len(parts))
@@ -184,6 +229,7 @@ func List(opts *ListOptions) (results []*ListResult, err error) {
 	}
 	err = cmd.Wait()
 	if err != nil {
+		// TODO handle stderr
 		return nil, err
 	}
 
@@ -228,7 +274,7 @@ func Info(ref Ref, opts *InfoOptions) (*InfoResult, error) {
 	cmd := exec.Command(flatpakBin, args...)
 	out, err := cmd.Output()
 	if err != nil {
-		return nil, err
+		return nil, wrapError(err)
 	}
 
 	var result InfoResult
@@ -319,7 +365,8 @@ func Uninstall(refs []string, opts *UninstallOptions) error {
 	args = append(args, optArgs...)
 
 	cmd := exec.Command(flatpakBin, args...)
-	return cmd.Run()
+	_, err := cmd.Output()
+	return wrapError(err)
 }
 
 var regInstall = regexp.MustCompile(`Installing:\s+(\S+)\s+from`)
