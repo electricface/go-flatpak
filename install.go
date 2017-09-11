@@ -1,26 +1,26 @@
 package flatpak
 
 import (
-	"regexp"
-	"fmt"
-	"strconv"
-	"os/exec"
 	"bytes"
 	"errors"
+	"fmt"
+	"os/exec"
+	"regexp"
+	"strconv"
 )
 
 var regInstall = regexp.MustCompile(`Installing:\s+(\S+)\s+from`)
 var regProgress = regexp.MustCompile(`\[(.*)\]\s+(.*)`)
 var regSpeed = regexp.MustCompile(`\(([\d.]+) (\w+)/s\)`)
 
-type InstallProgressMonitor struct {
+type installProgressMonitor struct {
 	cb InstallProgressCallback
 }
 
 type InstallProgressCallback func(progress float64, status string, speed int64)
 
-func newInstallProgressMonitor(cb InstallProgressCallback) *InstallProgressMonitor {
-	return &InstallProgressMonitor{
+func newInstallProgressMonitor(cb InstallProgressCallback) *installProgressMonitor {
+	return &installProgressMonitor{
 		cb: cb,
 	}
 }
@@ -84,7 +84,7 @@ func parseDataUnit(unit string) (float64, error) {
 	}
 }
 
-func (w *InstallProgressMonitor) Write(p []byte) (n int, err error) {
+func (w *installProgressMonitor) Write(p []byte) (n int, err error) {
 	//log.Printf("write %s\n", p)
 	result := regInstall.FindSubmatch(p)
 	if len(result) > 0 {

@@ -149,7 +149,7 @@ type ListOptions struct {
 	All     bool
 }
 
-func (o *ListOptions) GetArgs() (args []string) {
+func (o *ListOptions) getArgs() (args []string) {
 	if o == nil {
 		return nil
 	}
@@ -176,7 +176,7 @@ func (o *ListOptions) GetArgs() (args []string) {
 
 func List(opts *ListOptions) (results []*ListResult, err error) {
 	args := []string{"list", "-d"}
-	optArgs := opts.GetArgs()
+	optArgs := opts.getArgs()
 	args = append(args, optArgs...)
 
 	cmd := exec.Command(flatpakBin, args...)
@@ -233,7 +233,7 @@ type InfoOptions struct {
 	System bool
 }
 
-func (o *InfoOptions) GetArgs() (args []string) {
+func (o *InfoOptions) getArgs() (args []string) {
 	if o == nil {
 		return nil
 	}
@@ -248,7 +248,7 @@ func (o *InfoOptions) GetArgs() (args []string) {
 
 func Info(ref Ref, opts *InfoOptions) (*InfoResult, error) {
 	args := []string{"info", ref.String()}
-	optArgs := opts.GetArgs()
+	optArgs := opts.getArgs()
 	args = append(args, optArgs...)
 
 	cmd := exec.Command(flatpakBin, args...)
