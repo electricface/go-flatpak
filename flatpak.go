@@ -325,3 +325,71 @@ func Uninstall(refs []string, opts *UninstallOptions) error {
 	err := cmd.Run()
 	return wrapErrorCmdRun(err, &stderrBuf)
 }
+
+type RemotesOptions struct {
+	User         bool
+	System       bool
+	ShowDisabled bool
+}
+
+func (o *RemotesOptions) getArgs() (args []string) {
+	if o == nil {
+		return nil
+	}
+
+	if o.User {
+		args = append(args, "--user")
+	}
+	if o.System {
+		args = append(args, "--system")
+	}
+	if o.ShowDisabled {
+		args = append(args, "--show-disabled")
+	}
+
+	return args
+}
+
+type RemoteRepo struct {
+	Name    string
+	Options []string
+}
+
+func Remotes(opts *RemotesOptions) ([]*RemoteRepo, error) {
+	args := []string{"remotes"}
+	optArgs := opts.getArgs()
+	args = append(args, optArgs...)
+
+	cmd := exec.Command(flatpakBin, args...)
+	out, err := cmd.Output()
+	if err != nil {
+		return nil, wrapErrorCmdOutput(err)
+	}
+
+	var results []*RemoteRepo
+	lines := bytes.Split(out, []byte{'\n'})
+	for _, line := range lines {
+		line := bytes.TrimSpace(line)
+		if len(line) == 0 {
+			continue
+		}
+
+		parts := regSpaces.Split(string(line), -1)
+
+		if len(parts) >= 1 {
+			name := parts[0]
+			var options []string
+
+			if len(parts) >= 2 {
+				options = strings.Split(parts[1], ",")
+			}
+
+			results = append(results, &RemoteRepo{
+				Name:    name,
+				Options: options,
+			})
+		}
+
+	}
+	return results, nil
+}
