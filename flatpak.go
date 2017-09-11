@@ -15,6 +15,15 @@ var regSpaces = regexp.MustCompile(`\s+`)
 
 const flatpakBin = "flatpak"
 
+func DefaultArch() (string, error) {
+	cmd := exec.Command(flatpakBin, "--default-arch")
+	out, err := cmd.Output()
+	if err != nil {
+		return "", wrapErrorCmdOutput(err)
+	}
+	return string(bytes.TrimSpace(out)), nil
+}
+
 func SupportedArches() ([]string, error) {
 	cmd := exec.Command(flatpakBin, "--supported-arches")
 	out, err := cmd.Output()
