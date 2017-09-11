@@ -6,42 +6,32 @@ import (
 )
 
 type FlatpakError struct {
-	desc       string
-	origin     *exec.ExitError
-	usageShown bool
+	desc   string
+	origin *exec.ExitError
 }
 
 func (err *FlatpakError) Error() string {
 	if err.desc != "" {
-		if err.usageShown {
-			return "flatpak argument error:" + err.desc
-		}
 		return "flatpak:" + err.desc
 	}
 	return err.origin.Error()
 }
 
 func wrapError(err *exec.ExitError, stderr []byte) error {
-	var lastLine []byte
-	var usageShown bool
+	var desc []byte
 	lines := bytes.Split(stderr, []byte{'\n'})
-	if len(lines) > 0 && bytes.HasPrefix(lines[0], []byte("Usage:")) {
-		// first line is Usage:
-		usageShown = true
-	}
 
-	for _, line := range lines {
+	for i := len(lines) - 1; i >= 0; i-- {
+		line := bytes.TrimSpace(lines[i])
 		if len(line) > 0 {
-			lastLine = line
+			desc = bytes.TrimPrefix(line, []byte("error:"))
+			break
 		}
 	}
 
-	lastLine = bytes.TrimPrefix(lastLine, []byte("error:"))
-
 	return &FlatpakError{
-		desc:       string(lastLine),
-		origin:     err,
-		usageShown: usageShown,
+		desc:   string(desc),
+		origin: err,
 	}
 }
 
